@@ -1,0 +1,54 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String      @id @default(cuid())
+  wallet      String      @unique
+  ens         String?     @unique
+  subdomains  Subdomain[]
+  agents      AIAgent[]
+  reputation  Reputation?
+  createdAt   DateTime    @default(now())
+}
+
+model Subdomain {
+  id          String   @id @default(cuid())
+  name        String
+  fullDomain  String
+  userId      String
+  owner       User     @relation(fields: [userId], references: [id])
+  reputation  Int      @default(0)
+  verified    Boolean  @default(false)
+  metadata    Json?
+  agents      AIAgent[]
+  createdAt   DateTime @default(now())
+}
+
+model AIAgent {
+  id          String    @id @default(cuid())
+  name        String
+  passport    String    @unique
+  userId      String
+  owner       User      @relation(fields: [userId], references: [id])
+  subdomainId String
+  subdomain   Subdomain @relation(fields: [subdomainId], references: [id])
+  reputation  Int       @default(0)
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+}
+
+model Reputation {
+  id      String @id @default(cuid())
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id])
+  score   Int    @default(0)
+  history Json[]
+}
