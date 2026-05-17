@@ -1,32 +1,44 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import cors from 'cors';
+import cors from 'cors'; // استدعاء الأداة الجديدة
 
 const prisma = new PrismaClient();
 const app = express();
 
-app.use(cors()); // للسماح لـ Lovable بالاتصال بالمحرك
+// إعدادات الحماية للسماح لـ Lovable بالوصول
+app.use(cors({
+  origin: [
+    /\.lovable\.app$/,
+    /\.lovableproject\.com$/,
+    "http://localhost:5173",
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+}));
+
+// معالجة الطلبات التمهيدية
+app.options("*", cors());
+
 app.use(express.json());
 
 const port = process.env.PORT || 3000;
 
-// تسجيل مستخدم جديد عند ربط المحفظة
-app.post('/register', async (req: Request, res: Response) => {
-  const { wallet } = req.body;
+// نقطة فحص السمعة (Reputation Endpoint) لكي لا يظهر خطأ في Lovable
+app.get('/reputation', async (req: Request, res: Response) => {
   try {
-    const user = await prisma.user.upsert({
-      where: { wallet },
-      update: {},
-      create: { wallet }
+    // جلب عينة من البيانات لكي يراها Lovable
+    const data = await prisma.reputation.findMany({
+      take: 10,
+      include: { user: true }
     });
-    res.json(user);
+    res.json(data);
   } catch (error) {
-    res.status(500).json({ error: "Failed to register user" });
+    res.status(500).json({ error: "Failed to fetch reputation data" });
   }
 });
 
 app.get('/', (req: Request, res: Response) => {
-  res.send('RentOS API is Active and Connected to Database! 🚀');
+  res.send('RentOS API is Active and CORS is Configured! 🚀');
 });
 
 app.listen(port, () => {
