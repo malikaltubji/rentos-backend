@@ -4,7 +4,7 @@
   "main": "dist/app.js",
   "scripts": {
     "start": "node dist/app.js",
-    "build": "npx prisma db push && tsc",
+    "build": "export DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME} && npx prisma db push && tsc",
     "dev": "ts-node-dev src/app.ts"
   },
   "dependencies": {
