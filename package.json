@@ -4,7 +4,7 @@
   "main": "dist/app.js",
   "scripts": {
     "start": "node dist/app.js",
-    "build": "npx prisma generate && tsc",
+    "build": "npx prisma db push && tsc",
     "dev": "ts-node-dev src/app.ts"
   },
   "dependencies": {
