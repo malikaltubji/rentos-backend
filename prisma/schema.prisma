@@ -9,46 +9,142 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============ USER ============
 model User {
-  id          String      @id @default(cuid())
-  wallet      String      @unique
-  ens         String?     @unique
-  subdomains  Subdomain[]
-  agents      AIAgent[]
-  reputation  Reputation?
-  createdAt   DateTime    @default(now())
+  id            String    @id @default(cuid())
+  wallet        String    @unique // حافظنا على الاسم القديم لضمان عدم ضياع البيانات
+  ens           String?   @unique
+  
+  // Profile (إضافات اختيارية للسندات)
+  name          String?
+  email         String?   @unique
+  phone         String?
+  
+  // Relationships
+  subdomains    Subdomain[]
+  agents        AIAgent[]
+  deeds         Deed[]     // ميزة السندات الجديدة
+  parties       Party[]    // للأطراف المتعاقدة
+  reputation    Reputation?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt @default(now())
 }
 
+// ============ SUBDOMAIN ============
 model Subdomain {
-  id          String   @id @default(cuid())
-  name        String
-  fullDomain  String
-  userId      String
-  owner       User     @relation(fields: [userId], references: [id])
-  reputation  Int      @default(0)
-  verified    Boolean  @default(false)
-  metadata    Json?
-  agents      AIAgent[]
-  createdAt   DateTime @default(now())
+  id            String    @id @default(cuid())
+  name          String
+  fullDomain    String
+  userId        String
+  owner         User      @relation(fields: [userId], references: [id])
+  
+  // Metadata & Reputation
+  reputation    Int       @default(0)
+  verified      Boolean   @default(false)
+  metadata      Json?
+  
+  // Relationships
+  agents        AIAgent[]
+  deeds         Deed[]    // ربط السندات بالنطاقات
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt @default(now())
 }
 
+// ============ AI AGENT ============
 model AIAgent {
-  id          String    @id @default(cuid())
-  name        String
-  passport    String    @unique
-  userId      String
-  owner       User      @relation(fields: [userId], references: [id])
-  subdomainId String
-  subdomain   Subdomain @relation(fields: [subdomainId], references: [id])
-  reputation  Int       @default(0)
-  metadata    Json?
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  name          String
+  passport      String    @unique
+  userId        String
+  owner         User      @relation(fields: [userId], references: [id])
+  subdomainId   String
+  subdomain     Subdomain @relation(fields: [subdomainId], references: [id])
+  
+  // Metadata & Reputation
+  reputation    Int       @default(0)
+  metadata      Json?
+  
+  createdAt     DateTime  @default(now())
 }
 
+// ============ REPUTATION ============
 model Reputation {
-  id      String @id @default(cuid())
-  userId  String @unique
-  user    User   @relation(fields: [userId], references: [id])
-  score   Int    @default(0)
-  history Json[]
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  score         Int       @default(0)
+  history       Json[]    // حافظنا على النوع القديم لضمان التوافق
+}
+
+// ============ DEED (ميزة السندات الذكية الجديدة) ============
+model Deed {
+  id                String    @id @default(cuid())
+  deedHash          String    @unique
+  
+  // Owner & Subdomain
+  owner             User      @relation(fields: [ownerId], references: [id])
+  ownerId           String
+  subdomain         Subdomain @relation(fields: [subdomainId], references: [id])
+  subdomainId       String
+  
+  deedType          DeedType
+  
+  // Immutable Core Data (JSON لتسلسل الملاك والبيانات الأساسية)
+  genesisData       Json 
+  
+  title             String
+  propertyCode      String
+  
+  // Parties (الأطراف المتعاقدة)
+  firstParty        Party     @relation("FirstParty", fields: [firstPartyId], references: [id])
+  firstPartyId      String
+  secondParty       Party     @relation("SecondParty", fields: [secondPartyId], references: [id])
+  secondPartyId     String
+  
+  issueDate         DateTime  @default(now())
+  expiryDate        DateTime?
+  
+  status            DeedStatus @default(ACTIVE)
+  verified          Boolean    @default(false)
+  
+  // Storage & QR
+  ipfsHash          String?
+  pdfUrl            String?
+  qrCodeUrl         String?
+  
+  // Privacy Settings (JSON للتحكم في الخصوصية كما في نظام أبوظبي)
+  privacySettings   Json?     
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// ============ PARTY ============
+model Party {
+  id                String    @id @default(cuid())
+  partyType         String    // INDIVIDUAL, COMPANY
+  name              String
+  idNumber          String?   @unique // مثل رقم الهوية أو الرخصة التجارية
+  
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id])
+  
+  asFirstParty      Deed[]    @relation("FirstParty")
+  asSecondParty     Deed[]    @relation("SecondParty")
+}
+
+// ============ ENUMS ============
+enum DeedType {
+  LEASE
+  SALE
+  AGREEMENT
+  POA
+}
+
+enum DeedStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
 }
